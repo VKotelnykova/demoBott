@@ -42,10 +42,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                     break;
                 default:
 
-                        sendMessage(chatId, "Sorry, brat, comanda ne pracyue");
-                case "Privet":
-                   startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
-                   break;
+                        sendMessage(chatId, "Sorry, not working");
+
             }
         }
     }
