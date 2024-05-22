@@ -46,7 +46,6 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
@@ -58,20 +57,17 @@ public class TelegramBot extends TelegramLongPollingBot {
                     sendMenu(chatId);
                     break;
                 case "Цілі":
-                    Goals goals = new Goals();
+                    Goals goals = new Goals(this, update);
                     goals.goalBot(chatId, this);
                     break;
                 case "/Мотивація":
-                    Motivation motivation = new Motivation();
-
+                    // ...
                     break;
                 case "/Колесо фортуни":
-                    Wheel wheel = new Wheel();
+                    // ...
                     break;
-
                 default:
                     sendMessage(chatId, "Sorry, not working");
-
             }
         }
     }
@@ -105,7 +101,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.error("Error occurred:" + e.getMessage());
         }
     }
-    private void sendStartKeyboard(long chatId) {
+    public void sendStartKeyboard(long chatId) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
 
@@ -129,7 +125,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMenu(long chatId){
+    public void sendMenu(long chatId){
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
         KeyboardRow row1 = new KeyboardRow();
@@ -159,4 +155,3 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 }
-
