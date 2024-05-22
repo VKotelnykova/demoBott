@@ -1,5 +1,8 @@
 package com.example.demoBott.Service;
 
+import com.example.demoBott.Bottoms.Goals;
+import com.example.demoBott.Bottoms.Motivation;
+import com.example.demoBott.Bottoms.Wheel;
 import com.example.demoBott.model.User;
 import com.example.demoBott.model.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,15 +53,24 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             switch (messageText) {
                 case "/start":
-
                     registerUser(update.getMessage());
                     sendStartKeyboard(update.getMessage().getChatId());
-
                     sendMenu(chatId);
                     break;
-                default:
+                case "Цілі":
+                    Goals goals = new Goals();
+                    goals.goalBot(chatId, this);
+                    break;
+                case "/Мотивація":
+                    Motivation motivation = new Motivation();
 
-                        sendMessage(chatId, "Sorry, not working");
+                    break;
+                case "/Колесо фортуни":
+                    Wheel wheel = new Wheel();
+                    break;
+
+                default:
+                    sendMessage(chatId, "Sorry, not working");
 
             }
         }
@@ -79,14 +91,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             userRepository.save(user);
             log.info("user saved:" + user);
         }
-    }
-
-    private void startCommandReceived(long chatId, String name)  {
-
-        String answer = "Hi, " + name + ", nice to meet you!";
-        log.info("Replied to user:" + name);
-
-        sendMessage(chatId, answer);
     }
 
     private void sendMessage(long chatId, String textToSend){
