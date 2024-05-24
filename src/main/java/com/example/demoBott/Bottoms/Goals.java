@@ -1,54 +1,90 @@
 package com.example.demoBott.Bottoms;
 
+
 import com.example.demoBott.Service.TelegramBot;
+import com.example.demoBott.model.Goal;
+import com.example.demoBott.model.GoalRepository;
+import com.example.demoBott.model.UserRepository;
+import com.example.demoBott.model.User;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.ArrayList;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 public class Goals {
 
     private final TelegramBot telegramBot;
-    private final Update update; // Додали поле для об'єкта Update
+    private final GoalRepository goalRepository;
+    private final UserRepository userRepository;
 
-    public Goals(TelegramBot telegramBot, Update update) { // Додали параметр update до конструктора
+    public Goals(TelegramBot telegramBot, GoalRepository goalRepository, UserRepository userRepository) {
         this.telegramBot = telegramBot;
-        this.update = update; // Зберігаємо об'єкт Update для подальшого використання
+        this.goalRepository = goalRepository;
+        this.userRepository = userRepository;
     }
 
-    public void handleGoalsMenu() { // Видалили параметр Update з методу
-        // Тепер можемо використовувати поле update для отримання необхідних даних
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            String messageText = update.getMessage().getText();
-            long chatId = update.getMessage().getChatId();
+    public void promptForGoalDescription(long chatId) {
+        sendMessage(chatId, "Введіть опис цілі:");
+    }
 
-            switch (messageText) {
-                case "/Додати ціль" -> addGoal();
-                case "/Мої цілі" -> myGoals();
-                case "/Завершити ціль" -> finishGoal();
-                case "/Повернутись назад" -> telegramBot.sendMenu(chatId);
-                default -> sendMessage(chatId, "Sorry, not working");
-            }
+    public void addGoal(long chatId, String goalDescription) {
+        User user = userRepository.findById(chatId).orElse(null);
+        if (user != null) {
+            Goal goal = new Goal();
+            goal.setUser(user);
+            goal.setDescription(goalDescription);
+            goal.setCompleted(false);
+            goal.setCreatedAt(new Timestamp(System.currentTimeMillis()));
+
+            goalRepository.save(goal);
+            sendMessage(chatId, "Ціль додано: " + goalDescription);
+        } else {
+            sendMessage(chatId, "Користувач не знайдений");
         }
     }
 
-
-    private void finishGoal() {
+    public void myGoals(long chatId) {
+        User user = userRepository.findById(chatId).orElse(null);
+        if (user != null) {
+            List<Goal> goals = goalRepository.findByUserChatIdAndCompletedFalse(chatId);
+            StringBuilder response = new StringBuilder("Ваші цілі:\n");
+            for (Goal goal : goals) {
+                response.append(goal.getId()).append(": ").append(goal.getDescription()).append("\n");
+            }
+            sendMessage(chatId, response.toString());
+        } else {
+            sendMessage(chatId, "Користувач не знайдений");
+        }
     }
 
-    private void myGoals() {
+    public void promptForGoalId(long chatId) {
+        sendMessage(chatId, "Введіть ID цілі для завершення:");
     }
 
-    private void addGoal() {
+    public void finishGoal(long chatId, String goalId) {
+        try {
+            long id = Long.parseLong(goalId);
+            Goal goal = goalRepository.findById(id).orElse(null);
+            if (goal != null && goal.getUser().getChatId() == chatId) {
+                goal.setCompleted(true);
+                goalRepository.save(goal);
+                sendMessage(chatId, "Ціль завершено: " + goal.getDescription());
+            } else {
+                sendMessage(chatId, "Ціль не знайдено або ви не маєте права завершити цю ціль");
+            }
+        } catch (NumberFormatException e) {
+            sendMessage(chatId, "Невірний ID цілі");
+        }
     }
 
-    public void goalBot(long chatId, TelegramLongPollingBot bot) {
+    public void goalBot(long chatId) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
+
         KeyboardRow row1 = new KeyboardRow();
         row1.add("Додати ціль");
 
@@ -68,14 +104,16 @@ public class Goals {
         keyboard.add(row4);
 
         keyboardMarkup.setKeyboard(keyboard);
+
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText("Here is the Goals menu:");
         message.setReplyMarkup(keyboardMarkup);
+
         try {
-            bot.execute(message);
+            telegramBot.execute(message);
         } catch (TelegramApiException e) {
-            System.err.println("Error occurred:" + e.getMessage());
+            System.err.println("Error occurred: " + e.getMessage());
         }
     }
 
@@ -87,8 +125,9 @@ public class Goals {
         try {
             telegramBot.execute(message);
         } catch (TelegramApiException e) {
-            System.err.println("Error occurred:" + e.getMessage());
+            System.err.println("Error occurred: " + e.getMessage());
         }
     }
-}
 
+
+}

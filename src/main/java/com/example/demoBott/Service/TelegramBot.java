@@ -1,8 +1,7 @@
 package com.example.demoBott.Service;
 
 import com.example.demoBott.Bottoms.Goals;
-import com.example.demoBott.Bottoms.Motivation;
-import com.example.demoBott.Bottoms.Wheel;
+import com.example.demoBott.model.GoalRepository;
 import com.example.demoBott.model.User;
 import com.example.demoBott.model.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +27,8 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private GoalRepository goalRepository;
     final BotConfig config;
 
     public TelegramBot(BotConfig config) {
@@ -57,17 +58,26 @@ public class TelegramBot extends TelegramLongPollingBot {
                     sendMenu(chatId);
                     break;
                 case "Цілі":
-                    Goals goals = new Goals(this, update);
-                    goals.goalBot(chatId, this);
+                    Goals goals = new Goals(this, goalRepository, userRepository);
+                    goals.goalBot(chatId);
                     break;
-                case "/Мотивація":
-                    // ...
+                case "Додати ціль":
+                    Goals addGoal = new Goals(this, goalRepository, userRepository);
+                    addGoal.promptForGoalDescription(chatId);
                     break;
-                case "/Колесо фортуни":
-                    // ...
+                case "Мої цілі":
+                    Goals goalsList = new Goals(this, goalRepository, userRepository);
+                    goalsList.myGoals(chatId);
+                    break;
+                case "Завершити ціль":
+                    Goals finishGoal = new Goals(this, goalRepository, userRepository);
+                    finishGoal.promptForGoalId(chatId);
+                    break;
+                case "Повернутись назад":
+                    sendMenu(chatId);
                     break;
                 default:
-                    sendMessage(chatId, "Sorry, not working");
+                    sendMessage(chatId, "Команда не розпізнана. Будь ласка, виберіть команду з меню.");
             }
         }
     }
@@ -82,31 +92,31 @@ public class TelegramBot extends TelegramLongPollingBot {
             user.setFirstName(chat.getFirstName());
             user.setLastName(chat.getLastName());
             user.setUserName(chat.getUserName());
-            user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));  // Correct usage
+            user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
 
             userRepository.save(user);
-            log.info("user saved:" + user);
+            log.info("User saved: " + user);
         }
     }
 
-    private void sendMessage(long chatId, String textToSend){
+    private void sendMessage(long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText(textToSend);
+        message.setText(text);
 
-        try{
+        try {
             execute(message);
-        }
-        catch (TelegramApiException e){
-            log.error("Error occurred:" + e.getMessage());
+        } catch (TelegramApiException e) {
+            log.error("Error occurred: " + e.getMessage());
         }
     }
+
     public void sendStartKeyboard(long chatId) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
 
         KeyboardRow row = new KeyboardRow();
-        row.add("/start"); // Добавляем кнопку "Start"
+        row.add("/start");
 
         List<KeyboardRow> keyboard = new ArrayList<>();
         keyboard.add(row);
@@ -121,13 +131,14 @@ public class TelegramBot extends TelegramLongPollingBot {
         try {
             execute(message);
         } catch (TelegramApiException e) {
-            log.error("Error occurred:" + e.getMessage());
+            log.error("Error occurred: " + e.getMessage());
         }
     }
 
-    public void sendMenu(long chatId){
+    public void sendMenu(long chatId) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
+
         KeyboardRow row1 = new KeyboardRow();
         row1.add("Цілі");
 
@@ -137,21 +148,22 @@ public class TelegramBot extends TelegramLongPollingBot {
         KeyboardRow row3 = new KeyboardRow();
         row3.add("Колесо фортуни");
 
-
         List<KeyboardRow> keyboard = new ArrayList<>();
         keyboard.add(row1);
         keyboard.add(row2);
         keyboard.add(row3);
 
         keyboardMarkup.setKeyboard(keyboard);
+
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText("Here is the menu:");
         message.setReplyMarkup(keyboardMarkup);
+
         try {
             execute(message);
         } catch (TelegramApiException e) {
-            log.error("Error occurred:" + e.getMessage());
+            log.error("Error occurred: " + e.getMessage());
         }
     }
 }
