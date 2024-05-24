@@ -1,6 +1,7 @@
 package com.example.demoBott.Service;
 
 import com.example.demoBott.Bottoms.Goals;
+import com.example.demoBott.model.Goal;
 import com.example.demoBott.model.GoalRepository;
 import com.example.demoBott.model.User;
 import com.example.demoBott.model.UserRepository;
@@ -8,18 +9,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+
 import com.example.demoBott.config.BotConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-
 
 @Slf4j
 @Component
@@ -30,6 +33,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Autowired
     private GoalRepository goalRepository;
     final BotConfig config;
+
+    private final Map<Long, String> userStates = new HashMap<>();
 
     public TelegramBot(BotConfig config) {
         this.config = config;
@@ -50,7 +55,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
-
+        if (userStates.containsKey(chatId) && "ADDING_GOAL".equals(userStates.get(chatId))) {
+            Goals addGoal1 = new Goals(this, goalRepository, userRepository);
+            addGoal1.addGoal(chatId, messageText);
+            userStates.remove(chatId);  // Видаляємо стан після додавання цілі
+        } else {
             switch (messageText) {
                 case "/start":
                     registerUser(update.getMessage());
@@ -64,6 +73,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 case "Додати ціль":
                     Goals addGoal = new Goals(this, goalRepository, userRepository);
                     addGoal.promptForGoalDescription(chatId);
+                    userStates.put(chatId, "ADDING_GOAL");  // Змінюємо стан користувача на "ADDING_GOAL"
                     break;
                 case "Мої цілі":
                     Goals goalsList = new Goals(this, goalRepository, userRepository);
@@ -81,6 +91,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
         }
     }
+}
 
     private void registerUser(Message msg) {
         if (userRepository.findById(msg.getChatId()).isEmpty()) {
