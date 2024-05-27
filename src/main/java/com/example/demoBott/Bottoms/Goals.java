@@ -48,21 +48,29 @@ public class Goals {
     }
 
     public void myGoals(long chatId) {
-        User user = userRepository.findById(chatId).orElse(null);
-        if (user != null) {
-            List<Goal> goals = goalRepository.findByUserChatIdAndCompletedFalse(chatId);
-            StringBuilder response = new StringBuilder("Ваші цілі:\n");
+       User user = userRepository.findById(chatId).orElse(null);
+       if (user!= null){
+           List<Goal> goals = goalRepository.findByUserChatIdAndCompletedFalse(chatId);
+        if(goals.isEmpty()){
+            sendMessage(chatId, "У вас немає жодної цілі");
+        }else{
+            StringBuilder message = new StringBuilder("Ваші цілі:\n");
             for (Goal goal : goals) {
-                response.append(goal.getId()).append(": ").append(goal.getDescription()).append("\n");
+                message.append("- ")
+                        .append(goal.getDescription())
+                        .append(goal.isCompleted() ? "(Виконано)" : "(Не виконано)")
+                        .append("\n");
             }
-            sendMessage(chatId, response.toString());
-        } else {
-            sendMessage(chatId, "Користувач не знайдений");
+            sendMessage(chatId, message.toString());
         }
+       }else {
+           sendMessage(chatId, "Користувач не знайдений");
+       }
     }
 
     public void promptForGoalId(long chatId) {
         sendMessage(chatId, "Введіть ID цілі для завершення:");
+
     }
 
     public void finishGoal(long chatId, String goalId) {

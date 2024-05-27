@@ -1,7 +1,6 @@
 package com.example.demoBott.Service;
 
 import com.example.demoBott.Bottoms.Goals;
-import com.example.demoBott.model.Goal;
 import com.example.demoBott.model.GoalRepository;
 import com.example.demoBott.model.User;
 import com.example.demoBott.model.UserRepository;
@@ -9,13 +8,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
-
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
-
 import com.example.demoBott.config.BotConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
