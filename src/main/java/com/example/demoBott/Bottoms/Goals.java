@@ -68,24 +68,40 @@ public class Goals {
        }
     }
 
-    public void promptForGoalId(long chatId) {
-        sendMessage(chatId, "Введіть ID цілі для завершення:");
-
-    }
-
-    public void finishGoal(long chatId, String goalId) {
-        try {
-            long id = Long.parseLong(goalId);
-            Goal goal = goalRepository.findById(id).orElse(null);
-            if (goal != null && goal.getUser().getChatId() == chatId) {
-                goal.setCompleted(true);
-                goalRepository.save(goal);
-                sendMessage(chatId, "Ціль завершено: " + goal.getDescription());
+    public void finishGoal(long chatId, String goalIdStr) {
+        User user = userRepository.findById(chatId).orElse(null);
+        if (user != null) {
+            if (goalIdStr == null) {
+                List<Goal> goals = goalRepository.findByUserChatIdAndCompletedFalse(chatId);
+                if (goals.isEmpty()) {
+                    sendMessage(chatId, "У вас немає жодної цілі для завершення");
+                } else {
+                    StringBuilder message = new StringBuilder("Введіть номер цілі для завершення:\n");
+                    for (int i = 0; i < goals.size(); i++) {
+                        message.append(i + 1).append(". ")
+                                .append(goals.get(i).getDescription())
+                                .append("\n");
+                    }
+                    sendMessage(chatId, message.toString());
+                }
             } else {
-                sendMessage(chatId, "Ціль не знайдено або ви не маєте права завершити цю ціль");
+                try {
+                    int goalIndex = Integer.parseInt(goalIdStr) - 1;
+                    List<Goal> goals = goalRepository.findByUserChatIdAndCompletedFalse(chatId);
+                    if (goalIndex >= 0 && goalIndex < goals.size()) {
+                        Goal goal = goals.get(goalIndex);
+                        goal.setCompleted(true);
+                        goalRepository.save(goal);
+                        sendMessage(chatId, "Ціль завершена: " + goal.getDescription());
+                    } else {
+                        sendMessage(chatId, "Неправильний номер цілі. Спробуйте ще раз.");
+                    }
+                } catch (NumberFormatException e) {
+                    sendMessage(chatId, "Неправильний формат номера цілі. Спробуйте ще раз.");
+                }
             }
-        } catch (NumberFormatException e) {
-            sendMessage(chatId, "Невірний ID цілі");
+        } else {
+            sendMessage(chatId, "Користувач не знайдений");
         }
     }
 
@@ -103,13 +119,17 @@ public class Goals {
         row3.add("Завершити ціль");
 
         KeyboardRow row4 = new KeyboardRow();
-        row4.add("Повернутись назад");
+        row3.add("Видалити ціль");
+
+        KeyboardRow row5 = new KeyboardRow();
+        row5.add("Повернутись назад");
 
         List<KeyboardRow> keyboard = new ArrayList<>();
         keyboard.add(row1);
         keyboard.add(row2);
         keyboard.add(row3);
         keyboard.add(row4);
+        keyboard.add(row5);
 
         keyboardMarkup.setKeyboard(keyboard);
 

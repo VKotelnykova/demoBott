@@ -52,43 +52,55 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
-        if (userStates.containsKey(chatId) && "ADDING_GOAL".equals(userStates.get(chatId))) {
-            Goals addGoal1 = new Goals(this, goalRepository, userRepository);
-            addGoal1.addGoal(chatId, messageText);
-            userStates.remove(chatId);  // Видаляємо стан після додавання цілі
-        } else {
-            switch (messageText) {
-                case "/start":
-                    registerUser(update.getMessage());
-                    sendStartKeyboard(update.getMessage().getChatId());
-                    sendMenu(chatId);
-                    break;
-                case "Цілі":
-                    Goals goals = new Goals(this, goalRepository, userRepository);
-                    goals.goalBot(chatId);
-                    break;
-                case "Додати ціль":
-                    Goals addGoal = new Goals(this, goalRepository, userRepository);
-                    addGoal.promptForGoalDescription(chatId);
-                    userStates.put(chatId, "ADDING_GOAL");  // Змінюємо стан користувача на "ADDING_GOAL"
-                    break;
-                case "Мої цілі":
-                    Goals goalsList = new Goals(this, goalRepository, userRepository);
-                    goalsList.myGoals(chatId);
-                    break;
-                case "Завершити ціль":
-                    Goals finishGoal = new Goals(this, goalRepository, userRepository);
-                    finishGoal.promptForGoalId(chatId);
-                    break;
-                case "Повернутись назад":
-                    sendMenu(chatId);
-                    break;
-                default:
-                    sendMessage(chatId, "Команда не розпізнана. Будь ласка, виберіть команду з меню.");
+
+            if (userStates.containsKey(chatId)) {
+                switch (userStates.get(chatId)) {
+                    case "ADDING_GOAL":
+                        Goals addGoal = new Goals(this, goalRepository, userRepository);
+                        addGoal.addGoal(chatId, messageText);
+                        userStates.remove(chatId);  // Видаляємо стан після додавання цілі
+                        break;
+                    case "FINISHING_GOAL":
+                        Goals finishGoal = new Goals(this, goalRepository, userRepository);
+                        finishGoal.finishGoal(chatId, messageText);  // Виклик з введеним номером цілі
+                        userStates.remove(chatId);  // Видаляємо стан після завершення цілі
+                        break;
+                }
+            } else {
+                switch (messageText) {
+                    case "/start":
+                        registerUser(update.getMessage());
+                        sendStartKeyboard(update.getMessage().getChatId());
+                        sendMenu(chatId);
+                        break;
+                    case "Цілі":
+                        Goals goals = new Goals(this, goalRepository, userRepository);
+                        goals.goalBot(chatId);
+                        break;
+                    case "Додати ціль":
+                        Goals promptAddGoal = new Goals(this, goalRepository, userRepository);
+                        promptAddGoal.promptForGoalDescription(chatId);
+                        userStates.put(chatId, "ADDING_GOAL");  // Змінюємо стан користувача на "ADDING_GOAL"
+                        break;
+                    case "Мої цілі":
+                        Goals goalsList = new Goals(this, goalRepository, userRepository);
+                        goalsList.myGoals(chatId);
+                        break;
+                    case "Завершити ціль":
+                        Goals promptFinishGoal = new Goals(this, goalRepository, userRepository);
+                        promptFinishGoal.finishGoal(chatId, null);  // Початковий виклик для виведення списку
+                        userStates.put(chatId, "FINISHING_GOAL");  // Змінюємо стан користувача на "FINISHING_GOAL"
+                        break;
+                    case "Повернутись назад":
+                        sendMenu(chatId);
+                        break;
+                    default:
+                        sendMessage(chatId, "Команда не розпізнана. Будь ласка, виберіть команду з меню.");
+                        break;
+                }
             }
         }
     }
-}
 
     private void registerUser(Message msg) {
         if (userRepository.findById(msg.getChatId()).isEmpty()) {
