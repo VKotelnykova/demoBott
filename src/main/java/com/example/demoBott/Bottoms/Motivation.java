@@ -33,7 +33,7 @@ public class Motivation {
         row3.add("Відео");
 
         KeyboardRow row4 = new KeyboardRow();
-        row4.add("Повернутись назад у меню");
+        row4.add("Повернутись назад ");
 
         List<KeyboardRow> keyboard = new ArrayList<>();
         keyboard.add(row1);
