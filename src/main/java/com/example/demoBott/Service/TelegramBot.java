@@ -1,6 +1,7 @@
 package com.example.demoBott.Service;
 
 import com.example.demoBott.Bottoms.Goals;
+import com.example.demoBott.Bottoms.Motivation;
 import com.example.demoBott.model.GoalRepository;
 import com.example.demoBott.model.User;
 import com.example.demoBott.model.UserRepository;
@@ -58,12 +59,12 @@ public class TelegramBot extends TelegramLongPollingBot {
                     case "ADDING_GOAL":
                         Goals addGoal = new Goals(this, goalRepository, userRepository);
                         addGoal.addGoal(chatId, messageText);
-                        userStates.remove(chatId);  // Видаляємо стан після додавання цілі
+                        userStates.remove(chatId);
                         break;
                     case "FINISHING_GOAL":
                         Goals finishGoal = new Goals(this, goalRepository, userRepository);
-                        finishGoal.finishGoal(chatId, messageText);  // Виклик з введеним номером цілі
-                        userStates.remove(chatId);  // Видаляємо стан після завершення цілі
+                        finishGoal.finishGoal(chatId, messageText);
+                        userStates.remove(chatId);
                         break;
                 }
             } else {
@@ -80,7 +81,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                     case "Додати ціль":
                         Goals promptAddGoal = new Goals(this, goalRepository, userRepository);
                         promptAddGoal.promptForGoalDescription(chatId);
-                        userStates.put(chatId, "ADDING_GOAL");  // Змінюємо стан користувача на "ADDING_GOAL"
+                        userStates.put(chatId, "ADDING_GOAL");
                         break;
                     case "Мої цілі":
                         Goals goalsList = new Goals(this, goalRepository, userRepository);
@@ -88,8 +89,12 @@ public class TelegramBot extends TelegramLongPollingBot {
                         break;
                     case "Завершити ціль":
                         Goals promptFinishGoal = new Goals(this, goalRepository, userRepository);
-                        promptFinishGoal.finishGoal(chatId, null);  // Початковий виклик для виведення списку
-                        userStates.put(chatId, "FINISHING_GOAL");  // Змінюємо стан користувача на "FINISHING_GOAL"
+                        promptFinishGoal.finishGoal(chatId, null);
+                        userStates.put(chatId, "FINISHING_GOAL");
+                        break;
+                    case "Мотивація":
+                        Motivation motivation = new Motivation(this);
+                        motivation.showMotivationMenu(chatId);
                         break;
                     case "Повернутись назад":
                         sendMenu(chatId);
@@ -101,6 +106,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
         }
     }
+
 
     private void registerUser(Message msg) {
         if (userRepository.findById(msg.getChatId()).isEmpty()) {
