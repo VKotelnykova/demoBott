@@ -48,24 +48,25 @@ public class Goals {
     }
 
     public void myGoals(long chatId) {
-       User user = userRepository.findById(chatId).orElse(null);
-       if (user!= null){
-           List<Goal> goals = goalRepository.findByUserChatIdAndCompletedFalse(chatId);
-        if(goals.isEmpty()){
-            sendMessage(chatId, "У вас немає жодної цілі");
-        }else{
-            StringBuilder message = new StringBuilder("Ваші цілі:\n");
-            for (Goal goal : goals) {
-                message.append("- ")
-                        .append(goal.getDescription())
-                        .append(goal.isCompleted() ? "(Виконано)" : "(Не виконано)")
-                        .append("\n");
+        User user = userRepository.findById(chatId).orElse(null);
+        if (user != null) {
+            List<Goal> goals = goalRepository.findByUserChatId(chatId);
+            if (goals.isEmpty()) {
+                sendMessage(chatId, "У вас немає жодної цілі");
+            } else {
+                StringBuilder message = new StringBuilder("Ваші цілі:\n\n");
+                for (Goal goal : goals) {
+                    String statusEmoji = goal.isCompleted() ? "✅" /* Галочка */ : "❌" /* Хрестик */;
+                    message.append("- ")
+                            .append(goal.getDescription())
+                            .append(statusEmoji)
+                            .append("\n\n");
+                }
+                sendMessage(chatId, message.toString());
             }
-            sendMessage(chatId, message.toString());
+        } else {
+            sendMessage(chatId, "Користувач не знайдений");
         }
-       }else {
-           sendMessage(chatId, "Користувач не знайдений");
-       }
     }
 
     public void finishGoal(long chatId, String goalIdStr) {
@@ -90,9 +91,13 @@ public class Goals {
                     List<Goal> goals = goalRepository.findByUserChatIdAndCompletedFalse(chatId);
                     if (goalIndex >= 0 && goalIndex < goals.size()) {
                         Goal goal = goals.get(goalIndex);
-                        goal.setCompleted(true);
-                        goalRepository.save(goal);
-                        sendMessage(chatId, "Ціль завершена: " + goal.getDescription());
+                        if (!goal.isCompleted()) {
+                            goal.setCompleted(true);
+                            goalRepository.save(goal);
+                            sendMessage(chatId, "Ціль завершена: " + goal.getDescription());
+                        } else {
+                            sendMessage(chatId, "Ціль вже була завершена раніше.");
+                        }
                     } else {
                         sendMessage(chatId, "Неправильний номер цілі. Спробуйте ще раз.");
                     }
@@ -104,6 +109,37 @@ public class Goals {
             sendMessage(chatId, "Користувач не знайдений");
         }
     }
+
+    public void deleteGoal(long chatId, String goalIdStr) {
+        if (goalIdStr == null) {
+            // Показати повідомлення для введення номера цілі для видалення
+            SendMessage message = new SendMessage();
+            message.setChatId(String.valueOf(chatId));
+            message.setText("Введіть номер цілі, яку ви хочете видалити:");
+
+            try {
+                telegramBot.execute(message);
+            } catch (TelegramApiException e) {
+                System.err.println("Error occurred: " + e.getMessage());
+            }
+        } else {
+            // Видалення цілі за вказаним номером
+            try {
+                int goalIndex = Integer.parseInt(goalIdStr) - 1;
+                List<Goal> goals = goalRepository.findByUserChatId(chatId);
+                if (goalIndex >= 0 && goalIndex < goals.size()) {
+                    Goal goal = goals.get(goalIndex);
+                    goalRepository.delete(goal);
+                    sendMessage(chatId, "Ціль видалена: " + goal.getDescription());
+                } else {
+                    sendMessage(chatId, "Неправильний номер цілі. Спробуйте ще раз.");
+                }
+            } catch (NumberFormatException e) {
+                sendMessage(chatId, "Неправильний формат номера цілі. Спробуйте ще раз.");
+            }
+        }
+    }
+
 
     public void goalBot(long chatId) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
@@ -119,7 +155,7 @@ public class Goals {
         row3.add("Завершити ціль");
 
         KeyboardRow row4 = new KeyboardRow();
-        row3.add("Видалити ціль");
+        row4.add("Видалити ціль");
 
         KeyboardRow row5 = new KeyboardRow();
         row5.add("Повернутись назад");
