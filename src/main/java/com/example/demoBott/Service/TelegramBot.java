@@ -22,7 +22,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Autowired
     private GoalRepository goalRepository;
 
-    private final Map<Long, String> userStates = new HashMap<>();
+    public final Map<Long, String> userStates = new HashMap<>();
+    private Map<Long, String> userStatesData;
 
     public TelegramBot(BotConfig config) {
         this.config = config;
@@ -37,6 +38,15 @@ public class TelegramBot extends TelegramLongPollingBot {
     public String getBotToken() {
         return config.getToken();
     }
+
+    public void setUserStateData(long chatId, String data) {
+        userStatesData.put(chatId, data);
+    }
+
+    public void setUserState(long chatId, String state) {
+        userStates.put(chatId, state);
+    }
+
 
     @Override
     public void onUpdateReceived(Update update) {

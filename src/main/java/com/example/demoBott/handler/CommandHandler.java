@@ -2,11 +2,11 @@ package com.example.demoBott.handler;
 
 import com.example.demoBott.Bottoms.Goals;
 import com.example.demoBott.Bottoms.Motivation;
+import com.example.demoBott.Bottoms.Wheel;
 import com.example.demoBott.Service.TelegramBot;
 import com.example.demoBott.model.GoalRepository;
 import com.example.demoBott.model.User;
 import com.example.demoBott.model.UserRepository;
-import jakarta.persistence.Entity;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -20,9 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 
-
 @Slf4j
-
 public class CommandHandler {
     private final TelegramBot telegramBot;
     private final GoalRepository goalRepository;
@@ -48,6 +46,14 @@ public class CommandHandler {
                     Goals finishGoal = new Goals(telegramBot, goalRepository, userRepository);
                     finishGoal.finishGoal(chatId, messageText);
                     userStates.remove(chatId);
+                    break;
+                case "ENTERING_NUMBER_OF_POINTS":
+                case "ENTERING_POINTS":
+                    Wheel wheel = new Wheel(telegramBot);
+                    wheel.processInput(chatId, messageText);
+                    break;
+                default:
+                    sendMessage(chatId, "Невідомий стан користувача: " + userStates.get(chatId));
                     break;
             }
         } else {
@@ -79,6 +85,7 @@ public class CommandHandler {
                 case "Видалити ціль":
                     Goals deleteGoal = new Goals(telegramBot, goalRepository, userRepository);
                     deleteGoal.deleteGoal(chatId, null);
+                    userStates.put(chatId, "DELETING_GOAL");
                     break;
                 case "Мотивація":
                     Motivation motivation = new Motivation(telegramBot);
@@ -86,6 +93,10 @@ public class CommandHandler {
                     break;
                 case "Повернутись назад":
                     sendMenu(chatId);
+                    break;
+                case "Колесо фортуни":
+                    Wheel wheel = new Wheel(telegramBot);
+                    wheel.startWheel(chatId);
                     break;
                 default:
                     sendMessage(chatId, "Команда не розпізнана. Будь ласка, виберіть команду з меню.");
@@ -98,7 +109,6 @@ public class CommandHandler {
         if (userRepository.findById(msg.getChatId()).isEmpty()) {
             var chatId = msg.getChatId();
             var chat = msg.getChat();
-
             User user = new User();
             user.setChatId(chatId);
             user.setFirstName(chat.getFirstName());
@@ -179,3 +189,4 @@ public class CommandHandler {
         }
     }
 }
+
