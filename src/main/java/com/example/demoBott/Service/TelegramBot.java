@@ -1,8 +1,7 @@
 package com.example.demoBott.Service;
 
 import com.example.demoBott.handler.CommandHandler;
-import com.example.demoBott.model.GoalRepository;
-import com.example.demoBott.model.UserRepository;
+import com.example.demoBott.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +20,12 @@ public class TelegramBot extends TelegramLongPollingBot {
     private UserRepository userRepository;
     @Autowired
     private GoalRepository goalRepository;
+    @Autowired
+    private BooksRepository booksRepository;
+    @Autowired
+    private QuotesRepository quotesRepository;
+    @Autowired
+    private VideosRepository videosRepository;
 
     public final Map<Long, String> userStates = new HashMap<>();
     private Map<Long, String> userStatesData;
@@ -47,15 +52,14 @@ public class TelegramBot extends TelegramLongPollingBot {
         userStates.put(chatId, state);
     }
 
-
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
-            CommandHandler commandHandler = new CommandHandler(this, goalRepository, userRepository, userStates);
-            commandHandler.handleCommand(chatId, messageText);
+            CommandHandler commandHandler = new CommandHandler(this, goalRepository, userRepository, booksRepository, quotesRepository, videosRepository, userStates);
+            commandHandler.handleCommand(chatId, messageText, update);
         }
     }
 }

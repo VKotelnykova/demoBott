@@ -17,9 +17,15 @@ public class Books {
     @Getter
     @Setter
     private String title;
-    @Setter
+
     @Getter
+    @Setter
     private String author;
+
+    @Getter
+    @Setter
+    private String link;
+
     @Setter
     @Getter
     @Lob

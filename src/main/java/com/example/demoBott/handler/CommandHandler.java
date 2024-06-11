@@ -4,12 +4,11 @@ import com.example.demoBott.Bottoms.Goals;
 import com.example.demoBott.Bottoms.Motivation;
 import com.example.demoBott.Bottoms.Wheel;
 import com.example.demoBott.Service.TelegramBot;
-import com.example.demoBott.model.GoalRepository;
-import com.example.demoBott.model.User;
-import com.example.demoBott.model.UserRepository;
+import com.example.demoBott.model.*;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -18,23 +17,28 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Optional;
 
 @Slf4j
 public class CommandHandler {
     private final TelegramBot telegramBot;
     private final GoalRepository goalRepository;
     private final UserRepository userRepository;
+    private final BooksRepository booksRepository;
+    private final QuotesRepository quotesRepository;
+    private final VideosRepository videosRepository;
     private final Map<Long, String> userStates;
 
-    public CommandHandler(TelegramBot telegramBot, GoalRepository goalRepository, UserRepository userRepository, Map<Long, String> userStates) {
+    public CommandHandler(TelegramBot telegramBot, GoalRepository goalRepository, UserRepository userRepository, BooksRepository booksRepository, QuotesRepository quotesRepository, VideosRepository videosRepository, Map<Long, String> userStates) {
         this.telegramBot = telegramBot;
         this.goalRepository = goalRepository;
         this.userRepository = userRepository;
+        this.booksRepository = booksRepository;
+        this.quotesRepository = quotesRepository;
+        this.videosRepository = videosRepository;
         this.userStates = userStates;
     }
-
-    public void handleCommand(long chatId, String messageText) {
+    public void handleCommand(long chatId, String messageText, Update update) {
         if (userStates.containsKey(chatId)) {
             switch (userStates.get(chatId)) {
                 case "ADDING_GOAL":
@@ -59,10 +63,9 @@ public class CommandHandler {
         } else {
             switch (messageText) {
                 case "/start":
-                    Message msg = new Message();
-                    registerUser(msg);
-                    sendStartKeyboard(chatId);
-                    sendMenu(chatId);
+                    registerUser(update.getMessage());
+                    sendStartKeyboard(update.getMessage().getChatId());
+                    sendMenu(update.getMessage().getChatId());
                     break;
                 case "Цілі":
                     Goals goals = new Goals(telegramBot, goalRepository, userRepository);
@@ -91,8 +94,17 @@ public class CommandHandler {
                     Motivation motivation = new Motivation(telegramBot);
                     motivation.showMotivationMenu(chatId);
                     break;
+                case "Книги":
+                    sendRandomBook(chatId);
+                    break;
                 case "Повернутись назад":
                     sendMenu(chatId);
+                    break;
+                case "Побажання на день":
+                    sendRandomQuote(chatId);
+                    break;
+                case "Відео":
+                    sendRandomVideo(chatId);
                     break;
                 case "Колесо фортуни":
                     Wheel wheel = new Wheel(telegramBot);
@@ -118,6 +130,26 @@ public class CommandHandler {
 
             userRepository.save(user);
             log.info("User saved: " + user);
+        }
+    }
+
+    public void sendRandomVideo(long chatId) {
+        Optional<Videos> videoOptional = videosRepository.findRandomVideo();
+        if (videoOptional.isPresent()) {
+            Videos video = videoOptional.get();
+            sendMessage(chatId, "Title: " + video.getTitle() + "\nLink: " + video.getLink());
+        } else {
+            sendMessage(chatId, "No videos available at the moment.");
+        }
+    }
+    public void sendRandomBook(long chatId) {
+        Optional<Books> bookOptional = booksRepository.findRandomBook();
+        if (bookOptional.isPresent()) {
+            Books book = bookOptional.get();
+            String bookInfo = String.format("Title: %s\nAuthor: %s\nLink: %s", book.getTitle(), book.getAuthor(), book.getLink());
+            sendMessage(chatId, bookInfo);
+        } else {
+            sendMessage(chatId, "No books available at the moment.");
         }
     }
 
@@ -154,6 +186,16 @@ public class CommandHandler {
             telegramBot.execute(message);
         } catch (TelegramApiException e) {
             log.error("Error occurred: " + e.getMessage());
+        }
+    }
+
+    public void sendRandomQuote(long chatId) {
+        Optional<Quote> quoteOptional = quotesRepository.findRandomQuote();
+        if (quoteOptional.isPresent()) {
+            Quote quote = quoteOptional.get();
+            sendMessage(chatId, quote.getText());
+        } else {
+            sendMessage(chatId, "No quotes available at the moment.");
         }
     }
 
