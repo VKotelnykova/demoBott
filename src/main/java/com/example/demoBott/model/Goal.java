@@ -1,6 +1,7 @@
 package com.example.demoBott.model;
 
 import jakarta.persistence.*;
+
 import java.sql.Timestamp;
 
 @Entity

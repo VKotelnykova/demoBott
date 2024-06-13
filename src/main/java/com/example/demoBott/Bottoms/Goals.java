@@ -1,19 +1,18 @@
 package com.example.demoBott.Bottoms;
 
-
 import com.example.demoBott.Service.TelegramBot;
 import com.example.demoBott.model.Goal;
 import com.example.demoBott.model.GoalRepository;
-import com.example.demoBott.model.UserRepository;
 import com.example.demoBott.model.User;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import com.example.demoBott.model.UserRepository;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
 import java.sql.Timestamp;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Goals {
 
@@ -110,37 +109,6 @@ public class Goals {
         }
     }
 
-    public void deleteGoal(long chatId, String goalIdStr) {
-        if (goalIdStr == null) {
-            // Показати повідомлення для введення номера цілі для видалення
-            SendMessage message = new SendMessage();
-            message.setChatId(String.valueOf(chatId));
-            message.setText("Введіть номер цілі, яку ви хочете видалити:");
-
-            try {
-                telegramBot.execute(message);
-            } catch (TelegramApiException e) {
-                System.err.println("Error occurred: " + e.getMessage());
-            }
-        } else {
-            // Видалення цілі за вказаним номером
-            try {
-                int goalIndex = Integer.parseInt(goalIdStr) - 1;
-                List<Goal> goals = goalRepository.findByUserChatId(chatId);
-                if (goalIndex >= 0 && goalIndex < goals.size()) {
-                    Goal goal = goals.get(goalIndex);
-                    goalRepository.delete(goal);
-                    sendMessage(chatId, "Ціль видалена: " + goal.getDescription());
-                } else {
-                    sendMessage(chatId, "Неправильний номер цілі. Спробуйте ще раз.");
-                }
-            } catch (NumberFormatException e) {
-                sendMessage(chatId, "Неправильний формат номера цілі. Спробуйте ще раз.");
-            }
-        }
-    }
-
-
     public void goalBot(long chatId) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
@@ -155,23 +123,19 @@ public class Goals {
         row3.add("Завершити ціль");
 
         KeyboardRow row4 = new KeyboardRow();
-        row4.add("Видалити ціль");
-
-        KeyboardRow row5 = new KeyboardRow();
-        row5.add("Повернутись назад");
+        row4.add("Повернутись назад");
 
         List<KeyboardRow> keyboard = new ArrayList<>();
         keyboard.add(row1);
         keyboard.add(row2);
         keyboard.add(row3);
         keyboard.add(row4);
-        keyboard.add(row5);
 
         keyboardMarkup.setKeyboard(keyboard);
 
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText("Here is the Goals menu:");
+        message.setText("Меню цілей:");
         message.setReplyMarkup(keyboardMarkup);
 
         try {
@@ -192,6 +156,4 @@ public class Goals {
             System.err.println("Error occurred: " + e.getMessage());
         }
     }
-
-
 }

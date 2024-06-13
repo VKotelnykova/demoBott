@@ -5,7 +5,8 @@ import com.example.demoBott.Bottoms.Motivation;
 import com.example.demoBott.Bottoms.Wheel;
 import com.example.demoBott.Service.TelegramBot;
 import com.example.demoBott.model.*;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -14,16 +15,13 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
-@Slf4j
 public class CommandHandler {
+    private static final Logger log = LoggerFactory.getLogger(CommandHandler.class);
     private final TelegramBot telegramBot;
     private final GoalRepository goalRepository;
-    private final UserRepository userRepository;
+    private static UserRepository userRepository;
     private final BooksRepository booksRepository;
     private final QuotesRepository quotesRepository;
     private final VideosRepository videosRepository;
@@ -32,124 +30,104 @@ public class CommandHandler {
     public CommandHandler(TelegramBot telegramBot, GoalRepository goalRepository, UserRepository userRepository, BooksRepository booksRepository, QuotesRepository quotesRepository, VideosRepository videosRepository, Map<Long, String> userStates) {
         this.telegramBot = telegramBot;
         this.goalRepository = goalRepository;
-        this.userRepository = userRepository;
+        CommandHandler.userRepository = userRepository;
         this.booksRepository = booksRepository;
         this.quotesRepository = quotesRepository;
         this.videosRepository = videosRepository;
-        this.userStates = userStates;
+        this.userStates = userStates != null ? userStates : new HashMap<>();
     }
+
     public void handleCommand(long chatId, String messageText, Update update) {
         if (userStates.containsKey(chatId)) {
-            switch (userStates.get(chatId)) {
-                case "ADDING_GOAL":
-                    Goals addGoal = new Goals(telegramBot, goalRepository, userRepository);
-                    addGoal.addGoal(chatId, messageText);
-                    userStates.remove(chatId);
-                    break;
-                case "FINISHING_GOAL":
-                    Goals finishGoal = new Goals(telegramBot, goalRepository, userRepository);
-                    finishGoal.finishGoal(chatId, messageText);
-                    userStates.remove(chatId);
-                    break;
-                case "ENTERING_NUMBER_OF_POINTS":
-                case "ENTERING_POINTS":
-                    Wheel wheel = new Wheel(telegramBot);
-                    wheel.processInput(chatId, messageText);
-                    break;
-                default:
-                    sendMessage(chatId, "Невідомий стан користувача: " + userStates.get(chatId));
-                    break;
+            handleUserStateCommand(chatId, messageText);
+        } else {
+            handleGeneralCommand(chatId, messageText, update);
+        }
+    }
+
+    private void handleUserStateCommand(long chatId, String messageText) {
+        String userState = userStates.get(chatId);
+        switch (userState) {
+            case "ADDING_GOAL", "FINISHING_GOAL" -> {
+                Goals goalHandler = new Goals(telegramBot, goalRepository, userRepository);
+                if (userState.equals("ADDING_GOAL")) {
+                    goalHandler.addGoal(chatId, messageText);
+                } else {
+                    goalHandler.finishGoal(chatId, messageText);
+                }
+                userStates.remove(chatId);
+            }
+            case "ENTERING_NUMBER_OF_POINTS", "ENTERING_POINTS" ->
+                    new Wheel(telegramBot).processInput(chatId, messageText);
+            default -> sendMessage(chatId, "Невідомий стан користувача: " + userState);
+        }
+    }
+
+    public void handleGeneralCommand(long chatId, String messageText, Update update) {
+        switch (messageText) {
+            case "/start" -> {
+                registerUser(update.getMessage());
+                sendStartKeyboard(update.getMessage().getChatId());
+                sendMenu(update.getMessage().getChatId());
+            }
+            case "Цілі" -> new Goals(telegramBot, goalRepository, userRepository).goalBot(chatId);
+            case "Додати ціль" -> {
+                new Goals(telegramBot, goalRepository, userRepository).promptForGoalDescription(chatId);
+                userStates.put(chatId, "ADDING_GOAL");
+            }
+            case "Мої цілі" -> new Goals(telegramBot, goalRepository, userRepository).myGoals(chatId);
+            case "Завершити ціль" -> {
+                new Goals(telegramBot, goalRepository, userRepository).finishGoal(chatId, null);
+                userStates.put(chatId, "FINISHING_GOAL");
+            }
+            case "Мотивація" -> new Motivation(telegramBot).showMotivationMenu(chatId);
+            case "Книги" -> sendRandomBook(chatId);
+            case "Повернутись назад" -> sendMenu(chatId);
+            case "Побажання на день" -> sendRandomQuote(chatId);
+            case "Відео" -> sendRandomVideo(chatId);
+            case "Колесо фортуни" -> new Wheel(telegramBot).startWheel(chatId);
+            default -> sendMessage(chatId, "Команда не розпізнана. Будь ласка, виберіть команду з меню.");
+        }
+    }
+
+    public static void registerUser(Message msg) {
+        if (msg.getChat() != null) {
+            long chatId = msg.getChatId();
+            if (userRepository.findById(chatId).isEmpty()) {
+                User user = new User();
+                user.setChatId(chatId);
+                user.setFirstName(msg.getChat().getFirstName());
+                user.setLastName(msg.getChat().getLastName());
+                user.setUserName(msg.getChat().getUserName());
+                user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
+
+                userRepository.save(user);
+                log.info("Користувача збережено: " + user);
             }
         } else {
-            switch (messageText) {
-                case "/start":
-                    registerUser(update.getMessage());
-                    sendStartKeyboard(update.getMessage().getChatId());
-                    sendMenu(update.getMessage().getChatId());
-                    break;
-                case "Цілі":
-                    Goals goals = new Goals(telegramBot, goalRepository, userRepository);
-                    goals.goalBot(chatId);
-                    break;
-                case "Додати ціль":
-                    Goals promptAddGoal = new Goals(telegramBot, goalRepository, userRepository);
-                    promptAddGoal.promptForGoalDescription(chatId);
-                    userStates.put(chatId, "ADDING_GOAL");
-                    break;
-                case "Мої цілі":
-                    Goals goalsList = new Goals(telegramBot, goalRepository, userRepository);
-                    goalsList.myGoals(chatId);
-                    break;
-                case "Завершити ціль":
-                    Goals promptFinishGoal = new Goals(telegramBot, goalRepository, userRepository);
-                    promptFinishGoal.finishGoal(chatId, null);
-                    userStates.put(chatId, "FINISHING_GOAL");
-                    break;
-                case "Видалити ціль":
-                    Goals deleteGoal = new Goals(telegramBot, goalRepository, userRepository);
-                    deleteGoal.deleteGoal(chatId, null);
-                    userStates.put(chatId, "DELETING_GOAL");
-                    break;
-                case "Мотивація":
-                    Motivation motivation = new Motivation(telegramBot);
-                    motivation.showMotivationMenu(chatId);
-                    break;
-                case "Книги":
-                    sendRandomBook(chatId);
-                    break;
-                case "Повернутись назад":
-                    sendMenu(chatId);
-                    break;
-                case "Побажання на день":
-                    sendRandomQuote(chatId);
-                    break;
-                case "Відео":
-                    sendRandomVideo(chatId);
-                    break;
-                case "Колесо фортуни":
-                    Wheel wheel = new Wheel(telegramBot);
-                    wheel.startWheel(chatId);
-                    break;
-                default:
-                    sendMessage(chatId, "Команда не розпізнана. Будь ласка, виберіть команду з меню.");
-                    break;
-            }
+            log.error("Отримано нульовий об'єкт Chat у повідомленні.");
         }
     }
 
-    public void registerUser(Message msg) {
-        if (userRepository.findById(msg.getChatId()).isEmpty()) {
-            var chatId = msg.getChatId();
-            var chat = msg.getChat();
-            User user = new User();
-            user.setChatId(chatId);
-            user.setFirstName(chat.getFirstName());
-            user.setLastName(chat.getLastName());
-            user.setUserName(chat.getUserName());
-            user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
-
-            userRepository.save(user);
-            log.info("User saved: " + user);
-        }
-    }
 
     public void sendRandomVideo(long chatId) {
         Optional<Videos> videoOptional = videosRepository.findRandomVideo();
         if (videoOptional.isPresent()) {
             Videos video = videoOptional.get();
-            sendMessage(chatId, "Title: " + video.getTitle() + "\nLink: " + video.getLink());
+            sendMessage(chatId, "Назва: " + video.getTitle() + "\nПосилання: " + video.getLink());
         } else {
-            sendMessage(chatId, "No videos available at the moment.");
+            sendMessage(chatId, "На даний момент немає доступних відео.");
         }
     }
+
     public void sendRandomBook(long chatId) {
         Optional<Books> bookOptional = booksRepository.findRandomBook();
         if (bookOptional.isPresent()) {
             Books book = bookOptional.get();
-            String bookInfo = String.format("Title: %s\nAuthor: %s\nLink: %s", book.getTitle(), book.getAuthor(), book.getLink());
+            String bookInfo = String.format("Назва: %s\nАвтор: %s\nПосилання: %s", book.getTitle(), book.getAuthor(), book.getLink());
             sendMessage(chatId, bookInfo);
         } else {
-            sendMessage(chatId, "No books available at the moment.");
+            sendMessage(chatId, "На даний момент немає доступних книг.");
         }
     }
 
@@ -161,7 +139,7 @@ public class CommandHandler {
         try {
             telegramBot.execute(message);
         } catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
+            log.error("Сталася помилка: " + e.getMessage());
         }
     }
 
@@ -179,13 +157,13 @@ public class CommandHandler {
 
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText("Welcome to the bot! Press the button below to start.");
+        message.setText("Вітаємо в нашому боті\uD83D\uDC96");
         message.setReplyMarkup(keyboardMarkup);
 
         try {
             telegramBot.execute(message);
         } catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
+            log.error("Сталася помилка: " + e.getMessage());
         }
     }
 
@@ -195,7 +173,7 @@ public class CommandHandler {
             Quote quote = quoteOptional.get();
             sendMessage(chatId, quote.getText());
         } else {
-            sendMessage(chatId, "No quotes available at the moment.");
+            sendMessage(chatId, "На даний момент немає доступних цитат.");
         }
     }
 
@@ -221,14 +199,13 @@ public class CommandHandler {
 
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText("Here is the menu:");
+        message.setText("Ось меню:");
         message.setReplyMarkup(keyboardMarkup);
 
         try {
             telegramBot.execute(message);
         } catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
+            log.error("Сталася помилка: " + e.getMessage());
         }
     }
 }
-

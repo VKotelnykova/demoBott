@@ -1,15 +1,16 @@
 package com.example.demoBott.Service;
 
+import com.example.demoBott.config.BotConfig;
 import com.example.demoBott.handler.CommandHandler;
 import com.example.demoBott.model.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import java.util.HashMap;
-import java.util.Map;
-import com.example.demoBott.config.BotConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -17,7 +18,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     final BotConfig config;
     @Autowired
-    private UserRepository userRepository;
+    public UserRepository userRepository;
     @Autowired
     private GoalRepository goalRepository;
     @Autowired

@@ -2,6 +2,7 @@ package com.example.demoBott.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+
 import java.sql.Timestamp;
 
 @Entity(name= "usersDataTable")

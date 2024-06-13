@@ -45,7 +45,7 @@ public class Motivation {
 
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText("Here is the Motivation menu:");
+        message.setText("Меню мотивації:");
         message.setReplyMarkup(keyboardMarkup);
 
         try {
